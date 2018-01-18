@@ -23,6 +23,7 @@ import android.widget.TextView;
 
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.utilities.NetworkUtils;
+import com.example.android.sunshine.utilities.OpenWeatherJsonUtils;
 
 import java.io.IOException;
 import java.net.URL;
@@ -47,29 +48,44 @@ public class MainActivity extends AppCompatActivity {
     private void loadWeatherData() {
         String preferredLocation = SunshinePreferences.getPreferredWeatherLocation(this);
 
-        URL weatherURL = NetworkUtils.buildUrl(preferredLocation);
 
-        new fetchWeatherTask().execute(weatherURL);
+
+        new fetchWeatherTask().execute(preferredLocation);
     }
 
 
-    public class fetchWeatherTask extends AsyncTask<URL, Void, String> {
+    public class fetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         @Override
-        protected String doInBackground(URL... params)
+        protected String[] doInBackground(String... params)
         {
-            URL location = params[0];
-            String weatherDataResults = null;
-            try {
-                weatherDataResults = NetworkUtils.getResponseFromHttpUrl(location);
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (params.length == 0) {
+                return null;
             }
-            return weatherDataResults;
+
+            String location = params[0];
+            URL weatherURL = NetworkUtils.buildUrl(location);
+
+            try {
+                String jsonWeatherResponse = NetworkUtils
+                        .getResponseFromHttpUrl(weatherURL);
+
+                String[] simpleJsonWeatherData = OpenWeatherJsonUtils
+                        .getSimpleWeatherStringsFromJson(MainActivity.this, jsonWeatherResponse);
+
+                return simpleJsonWeatherData;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
         }
 
-        protected void onPostExecute(String weatherDataResults) {
-            mWeatherTextView.setText(weatherDataResults);
+        protected void onPostExecute(String[] weatherDataResults) {
+            if (weatherDataResults != null) {
+                for (String weatherString: weatherDataResults) {
+                    mWeatherTextView.append((weatherString) + "\n\n\n");
+                }
+            }
         }
 
     }
